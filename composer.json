@@ -1,0 +1,60 @@
+{
+    "name": "vormiaphp/vormia-inertia",
+    "description": "Laravel Inertia.js integration for Vormia applications",
+    "keywords": [
+        "laravel",
+        "php",
+        "inertia",
+        "inertiajs",
+        "vormia"
+    ],
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Josh Minga",
+            "email": "packages@vormia.com",
+            "homepage": "https://packages.vormia.com/vormiaphp",
+            "role": "Developer"
+        }
+    ],
+    "support": {
+        "source": "https://github.com/vormiaphp/vormia-inertia"
+    },
+    "autoload": {
+        "psr-4": {
+            "VormiaPHP\\VormiaInertia\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "VormiaPHP\\VormiaInertia\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "VormiaPHP\\VormiaInertia\\VormiaInertiaServiceProvider"
+            ],
+            "aliases": {
+                "VormiaInertia": "VormiaPHP\\VormiaInertia\\Facades\\VormiaInertia"
+            }
+        }
+    },
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "^12.0|^13.0",
+        "vormiaphp/vormia": "^5.4",
+        "inertiajs/inertia-laravel": "^2.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^10.0",
+        "phpunit/phpunit": "^11.5|^12.0"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage"
+    }
+}
