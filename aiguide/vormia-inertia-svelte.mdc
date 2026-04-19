@@ -1,0 +1,107 @@
+---
+description: Vormia + Inertia.js patterns for Svelte 5 (pages, Vite, shared props, MediaForge).
+globs:
+  - "**/resources/js/**/*.svelte"
+  - "**/resources/js/app.ts"
+  - "**/resources/js/app.js"
+alwaysApply: false
+---
+
+# Vormia Inertia — Svelte 5 guide
+
+## Overview
+
+Use this guide when the stack is **Laravel + vormiaphp/vormia + vormiaphp/vormia-inertia + Inertia Svelte**. Svelte compiles components at build time; Inertia passes **props** from Laravel into each page. Prefer **Svelte 5 runes** (`$props()`, `$state`, `$derived`, `$effect`) for new code.
+
+## Tech stack (align versions with your lockfiles)
+
+- **Laravel** 12+.
+- **inertiajs/inertia-laravel** — server side.
+- **@inertiajs/svelte** — `createInertiaApp`, `usePage`, `router`, `Link`, `Head`, `useForm`.
+- **@inertiajs/vite** — Vite plugin.
+- **vite-plugin-svelte** — compiles `.svelte` files.
+- **Svelte 5** — [svelte.dev/docs](https://svelte.dev/docs/svelte/overview).
+
+Official Inertia entry points for Svelte:
+
+- [Client-side setup — Svelte](https://inertiajs.com/client-side-setup#svelte)
+- [Pages](https://inertiajs.com/pages), [Links](https://inertiajs.com/links), [Forms](https://inertiajs.com/forms), [Shared data](https://inertiajs.com/shared-data)
+
+## File structure (convention)
+
+```
+resources/js/
+├── app.ts                  # createInertiaApp + mount target
+├── pages/
+│   └── ...
+├── layouts/
+│   └── AppLayout.svelte
+└── components/
+```
+
+The **`resolve`** function in `createInertiaApp` should return the correct `.svelte` module for the string name Laravel uses in `Inertia::render()`.
+
+## Page component (runes)
+
+Incoming props are provided by Inertia from the controller. In Svelte 5 you typically declare them with **`$props()`**:
+
+```svelte
+<script>
+  /** @type {{ user: { name: string } }} */
+  let { user } = $props()
+</script>
+
+<div>Hello, {user.name}</div>
+```
+
+(Use generated types or JSDoc until you adopt full TypeScript for props.)
+
+## Shared props and Vormia
+
+In **`HandleInertiaRequests::share()`**, expose for example:
+
+- **`notification`** — one-shot server notification for a toast.
+- **`auth`** — safe user subset.
+- **`vormia`** — public hints only (no API keys or private disk credentials).
+
+Read them with **`usePage()`** from `@inertiajs/svelte`:
+
+```svelte
+<script>
+  import { usePage } from '@inertiajs/svelte'
+
+  const page = usePage()
+  // page.props — shared + page props from Laravel (reactive with Inertia updates)
+</script>
+```
+
+## Navigation
+
+- **`<Link href={...}>`** — declarative Inertia navigation.
+- **`router.visit(...)`** — imperative; same visit options as other adapters ([manual visits](https://inertiajs.com/manual-visits)).
+
+## Forms
+
+Use **`useForm`** from `@inertiajs/svelte` so validation errors and processing state integrate with Inertia. See [Inertia forms — Svelte](https://inertiajs.com/forms#svelte).
+
+## MediaForge rule of thumb
+
+Build display URLs with **`MediaForge::url()`** (and signing when needed) in PHP, then pass strings in Inertia props. Svelte templates should bind to those URLs; avoid encoding bucket logic only in the client.
+
+## Layouts
+
+Use Inertia [persistent layouts](https://inertiajs.com/pages#persistent-layouts) (Svelte section) so shared chrome stays mounted across navigations.
+
+## Checklist (new screen)
+
+1. Laravel route, controller, authorization.
+2. `Inertia::render('pages/...', $props)`.
+3. Matching `.svelte` page and resolver entry.
+4. `<Link>` / `router.visit` from other pages.
+5. Media handled server-side; props include final URLs.
+
+## Official resources
+
+- [Svelte 5 documentation](https://svelte.dev/docs/svelte/overview)
+- [Inertia.js](https://inertiajs.com/)
+- [Vite](https://vite.dev/)

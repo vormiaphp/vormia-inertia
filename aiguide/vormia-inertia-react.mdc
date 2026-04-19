@@ -1,0 +1,101 @@
+---
+description: Vormia + Inertia.js patterns for React (pages, Vite, shared props, MediaForge).
+globs:
+  - "**/resources/js/**/*.tsx"
+  - "**/resources/js/**/*.jsx"
+  - "**/resources/js/app.tsx"
+  - "**/resources/js/app.jsx"
+alwaysApply: false
+---
+
+# Vormia Inertia — React guide
+
+## Overview
+
+Use this guide when the app stack is **Laravel + vormiaphp/vormia + vormiaphp/vormia-inertia + Inertia React**. Laravel returns `Inertia::render()` responses; React components are **pages** resolved by name (usually under `resources/js/Pages` or your chosen folder).
+
+## Tech stack (align versions with your lockfiles)
+
+- **Laravel** 12+ (see `composer.json`).
+- **inertiajs/inertia-laravel** — server middleware and `Inertia` facade.
+- **@inertiajs/react** — `createInertiaApp`, `usePage`, `router`, `Link`, `Head`, `useForm`.
+- **@inertiajs/vite** — Vite plugin for Inertia.
+- **@vitejs/plugin-react** — JSX/TSX in Vite.
+- **React** — follow [react.dev](https://react.dev/) for components, hooks, and strict mode.
+
+Official Inertia entry points for React:
+
+- [Client-side setup — React](https://inertiajs.com/client-side-setup#react)
+- [Pages](https://inertiajs.com/pages), [Links](https://inertiajs.com/links), [Forms](https://inertiajs.com/forms), [Shared data](https://inertiajs.com/shared-data)
+
+## File structure (convention)
+
+```
+resources/js/
+├── app.tsx                 # createInertiaApp + createRoot
+├── Pages/                  # or vormia/pages/ — keep glob in vite resolve consistent
+│   └── ...
+├── Layouts/
+│   └── AppLayout.tsx
+└── Components/
+```
+
+Match your `resolve` callback in `createInertiaApp` to the folder you use; the demo in this repo uses `import.meta.glob` over `./vormia/pages/**/*.tsx`.
+
+## Page component
+
+- **Default export** — the page component Inertia mounts.
+- **Props** — come from the controller’s second argument to `Inertia::render('Name', [...])`.
+
+```tsx
+// Pages/Dashboard.tsx — props mirror PHP array keys
+export default function Dashboard({ user }: { user: { name: string } }) {
+  return <div>Hello, {user.name}</div>
+}
+```
+
+## Shared props and Vormia
+
+Register shared props in **`app/Http/Middleware/HandleInertiaRequests.php`** (`share()`), for example:
+
+- **`notification`** — current flash/session notification for a one-shot toast (from Vormia’s notification flow on the server).
+- **`auth.user`** — subset of the authenticated user safe for JSON.
+- **`vormia`** — only **public** hints (e.g. MediaForge disk name patterns), never secrets.
+
+In React, read shared + page props with **`usePage()`** from `@inertiajs/react`:
+
+```tsx
+import { usePage } from '@inertiajs/react'
+
+const page = usePage<{ notification?: unknown }>()
+// page.props.notification — show once after navigation if present
+```
+
+## Navigation
+
+- **`<Link href={url}>`** — client-side visits when possible.
+- **`router.visit(url)`** — imperative navigation; use `preserveScroll`, `preserveState` as needed per [Inertia visits](https://inertiajs.com/manual-visits).
+
+If you use **Laravel Wayfinder**, prefer generated URL helpers over hard-coded paths so renames stay type-safe.
+
+## Forms
+
+Use **`useForm`** from `@inertiajs/react` for Inertia-powered POST/PUT/PATCH; Laravel validation errors appear on the form helper. See [Inertia forms — React](https://inertiajs.com/forms#react).
+
+## MediaForge rule of thumb
+
+PHP owns storage and signing. Pass **`MediaForge::url($path)->public()`** or signed variants into Inertia props. The React layer should receive **final URL strings** (or structured view models), not raw internal paths unless you also pass disk metadata and a dedicated API to resolve them.
+
+## Checklist (new screen)
+
+1. Add route in `routes/web.php` (middleware, policy).
+2. Controller method returns `Inertia::render('Folder/Page', $props)`.
+3. Add `Folder/Page.tsx` (or `.jsx`) under the glob used in `resolve`.
+4. Add `<Link>` or `router.visit` from existing pages.
+5. If the screen uploads media, use Vormia `MediaForge` on the server and return resolved URLs in props.
+
+## Official resources
+
+- [React documentation](https://react.dev/)
+- [Inertia.js](https://inertiajs.com/)
+- [Vite](https://vite.dev/) (build tool used by Laravel’s front end)

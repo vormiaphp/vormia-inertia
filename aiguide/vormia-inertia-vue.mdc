@@ -1,0 +1,108 @@
+---
+description: Vormia + Inertia.js patterns for Vue 3 (SFC pages, Vite, shared props, MediaForge).
+globs:
+  - "**/resources/js/**/*.vue"
+  - "**/resources/js/app.ts"
+  - "**/resources/js/app.js"
+alwaysApply: false
+---
+
+# Vormia Inertia — Vue 3 guide
+
+## Overview
+
+Use this guide when the stack is **Laravel + vormiaphp/vormia + vormiaphp/vormia-inertia + Inertia Vue 3**. Laravel renders Inertia responses; **Vue Single File Components** (`.vue`) are the page layer. Prefer **Composition API** with **`<script setup>`** for new code.
+
+## Tech stack (align versions with your lockfiles)
+
+- **Laravel** 12+.
+- **inertiajs/inertia-laravel** — server side.
+- **@inertiajs/vue3** — `createInertiaApp`, `usePage`, `router`, `Link`, `Head`, `useForm`.
+- **@inertiajs/vite** — Vite plugin.
+- **@vitejs/plugin-vue** — compiles `.vue` in Vite.
+- **Vue 3** — [vuejs.org](https://vuejs.org/guide/introduction.html).
+
+Official Inertia entry points for Vue:
+
+- [Client-side setup — Vue](https://inertiajs.com/client-side-setup#vue)
+- [Pages](https://inertiajs.com/pages), [Links](https://inertiajs.com/links), [Forms](https://inertiajs.com/forms), [Shared data](https://inertiajs.com/shared-data)
+
+## File structure (convention)
+
+```
+resources/js/
+├── app.ts                  # createInertiaApp + createApp
+├── Pages/
+│   └── ...
+├── Layouts/
+│   └── AppLayout.vue
+└── Components/
+```
+
+Keep the **page name** string in `Inertia::render()` aligned with the resolver (often `Pages/Foo/Bar` → `./Pages/Foo/Bar.vue`).
+
+## Page component (`<script setup>`)
+
+Props are passed from Laravel as component props. You can type them with TypeScript or runtime `defineProps`.
+
+```vue
+<script setup lang="ts">
+defineProps<{ user: { name: string } }>()
+</script>
+
+<template>
+  <div>Hello, {{ user.name }}</div>
+</template>
+```
+
+## Shared props and Vormia
+
+In **`HandleInertiaRequests::share()`**, expose things like:
+
+- **`notification`** — flash/session notification for a global toast or modal.
+- **`auth`** — minimal user for the layout.
+- **`vormia`** — public configuration hints only.
+
+In Vue, use **`usePage()`** from `@inertiajs/vue3`:
+
+```vue
+<script setup lang="ts">
+import { usePage } from '@inertiajs/vue3'
+
+const page = usePage<{ notification?: unknown }>()
+// page.props.notification
+</script>
+```
+
+## Navigation
+
+- **`<Link :href="url">`** — preferred for declarative navigation.
+- **`router.visit(url)`** — imperative; supports [visit options](https://inertiajs.com/manual-visits).
+
+With **Wayfinder**, import typed route helpers instead of stringly-typed paths where possible.
+
+## Forms
+
+Use **`useForm`** from `@inertiajs/vue3` for Inertia form state and Laravel validation errors. See [Inertia forms — Vue](https://inertiajs.com/forms#vue).
+
+## MediaForge rule of thumb
+
+Resolve **`MediaForge::url()`** (public or signed) in PHP and pass URLs into `Inertia::render()`. Vue should bind `src`/`href` to those strings rather than reconstructing S3 or storage URLs from secrets in the browser.
+
+## Persistent layouts
+
+Use Inertia’s [persistent layouts](https://inertiajs.com/pages#persistent-layouts) pattern so shell UI (nav, toasts) does not remount on every navigation.
+
+## Checklist (new screen)
+
+1. Route + controller + policy (Laravel).
+2. `Inertia::render('Pages/...', $props)`.
+3. Matching `.vue` page under the resolver path.
+4. Links with `<Link>` or `router.visit`.
+5. Media: server-side Vormia processing; props carry displayable URLs.
+
+## Official resources
+
+- [Vue 3 documentation](https://vuejs.org/)
+- [Inertia.js](https://inertiajs.com/)
+- [Vite](https://vite.dev/)
