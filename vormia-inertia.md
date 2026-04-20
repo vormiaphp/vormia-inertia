@@ -1,100 +1,189 @@
----
-name: vormia-inertia package
-overview: Create a new Composer package `vormiaphp/vormia-inertia` that depends on `vormiaphp/vormia`, wires Inertia shared props for Vormia notifications and MediaForge-aware URLs, ships a one-command installer with interactive choices (jQuery stack vs isolated), and add a markdown guide under `inertia/` that explains merging `tsconfig.json` / `vite.config.js` and front-end stack (Tailwind 4, shadcn, Wayfinder).
-todos:
-  - id: scaffold-package
-    content: Scaffold `vormiaphp/vormia-inertia` composer package (psr-4, service provider, require vormiaphp/vormia + inertia-laravel, suggest wayfinder).
-    status: pending
-  - id: middleware-share
-    content: Implement HandleInertiaRequests stub sharing `notification` via NotificationService::current(); optional safe MediaForge config subset in shared props.
-    status: pending
-  - id: install-command
-    content: Add `vormia-inertia:install` with prompts for jQuery/Select2/Flatpickr (remove vs isolate) and Flux CSS strategy; publish stubs; print merge steps for bootstrap middleware.
-    status: pending
-  - id: react-template
-    content: Publish enhanced `resources/js/app.tsx` + small React notification bridge component aligned with shadcn/SweetAlert2 choice.
-    status: pending
-  - id: inertia-md
-    content: Create `inertia/VORMIA_INERTIA.md` with tsconfig/vite merge guide, Wayfinder, notifications, MediaForge, and dependency prompts.
-    status: pending
-  - id: sync-demo-folder
-    content: Align `inertia/` demo files in VormiaPackage with published stubs + doc (when implementing in Agent mode).
-    status: pending
-isProject: false
----
+# Vormia Inertia Developer Guide
 
-# Plan: `vormiaphp/vormia-inertia` + Inertia docs in repo
+This document explains what the package does, what it does not do, which commands are available, and which helpers developers should call when building an Inertia-based Vormia application.
 
-## Goals
+## Package Scope
 
-- **Single install path**: one Artisan command (e.g. `php artisan vormia-inertia:install`) that registers middleware, publishes stubs, and prints exact **merge steps** for Vite/TS.
-- **Notification helper**: bridge Vormia’s existing [`NotificationService`](src/Vormia/Services/NotificationService.php) (`NotificationService::current()` / session `notification` key) into **Inertia shared props** so React can show toasts/alerts once per navigation.
-- **MediaForge**: document and optionally share **safe, minimal** props (e.g. `vormia.mediaforge` config subset or base public URL patterns) so React can build image URLs consistently with [`MediaForgeManager`](src/Vormia/Services/MediaForge/MediaForgeManager.php) / `config/vormia.php` — without duplicating business logic in JS.
-- **Front-end stack**: treat **Tailwind 4 + shadcn + Wayfinder** as the default; installer copies/merges from your reference files [`inertia/vite.config.js`](inertia/vite.config.js) and [`inertia/tsconfig.json`](inertia/tsconfig.json).
-- **Template updates**: package publishes an updated [`inertia/resources/js/app.tsx`](inertia/resources/js/app.tsx) pattern (full `createInertiaApp` + `createRoot` + optional global notification listener + default layout hook).
-- **Interactive deps**: installer **asks** whether to **remove** jQuery, Select2, Flatpickr from `package.json` or **keep and isolate** them; same for **Flux** CSS (your current [`inertia/resources/css/app.css`](inertia/resources/css/app.css) has **no Flux** string — the doc will explain “remove if you add Livewire Flux” or “strip conflicting imports” when applicable).
-- **Documentation**: add a **new `.md` file under [`inertia/`](inertia/)** (e.g. `inertia/VORMIA_INERTIA.md`) describing setup, merge instructions, and the jQuery/Flux decision tree.
+`vormiaphp/vormia-inertia` is the Laravel-side bridge between:
 
-## Package layout (new repo or monorepo subfolder)
+- core Vormia on the backend
+- Inertia on the response layer
+- React, Vue, or Svelte on the page layer
 
-- Composer package name: `vormiaphp/vormia-inertia`
-- **require**: `vormiaphp/vormia`, `inertiajs/inertia-laravel`, `laravel/framework` (same range as core or `^12|^13`), PHP aligned with Vormia.
-- **suggest**: `laravel/wayfinder` (recommended; matches your stack).
-- **extra.laravel**: register `VormiaPHP\VormiaInertia\VormiaInertiaServiceProvider` (name TBD).
-- **Stubs to publish** (non-destructive defaults + merge guidance):
-  - `app/Http/Middleware/HandleInertiaRequests.php` extending `Inertia\Middleware`, `share()` returns at least:
-    - `notification` => `NotificationService::current()` (or `null`)
-    - Optional: small `vormia` array with MediaForge-related **public** hints from `config('vormia.mediaforge')` (disk, base paths) — **no secrets**.
-  - `resources/js/app.tsx` (canonical template from this repo’s [`inertia/resources/js/app.tsx`](inertia/resources/js/app.tsx), extended with `createRoot`, `resolvePageComponent` or your existing `import.meta.glob` pattern, and a `<VormiaNotificationBridge />` stub using `@inertiajs/react` `usePage`).
-  - Optional React component: `resources/js/vormia/components/VormiaNotifications.tsx` (shadcn toast or SweetAlert2 — your [`inertia/package.json`](inertia/package.json) already lists `sweetalert2`; pick one default and document the other as optional).
+It is not a full starter kit and it does not replace the core Vormia package.
 
-## One-command installer behavior
+## What The Package Ships
 
-- Command: `vormia-inertia:install`
-- Steps:
-  1. Assert `vormiaphp/vormia` is installed and config published if needed (print `vendor:publish` tag if missing).
-  2. Publish middleware + JS stubs (with `--force` only when user confirms overwrite).
-  3. Register middleware in `bootstrap/app.php` (Laravel 11+) or `app/Http/Kernel.php` (if still used) — document both in the MD file.
-  4. **Prompts** (via Laravel `confirm` / `choice`):
-     - **jQuery / Select2 / Flatpickr**:
-       - **Remove** (default recommendation): strip from `package.json` template and remove any CSS imports that exist only for legacy plugins.
-       - **Keep but isolate**: keep deps, add doc section: load only inside specific Blade islands or lazy-init in a named container; **never** bind global `$` handlers on `document` for Inertia navigations; prefer React components for date/select.
-     - **Flux CSS**: if user uses **Livewire Flux** in the same app, ask whether to **exclude Flux styles** from the Inertia bundle or keep a separate Vite entry — document conflict patterns (global CSS vs scoped layouts).
-  5. Print **post-install checklist**: `npm install`, `php artisan wayfinder:generate` (if Wayfinder present), `npm run build`.
+### Commands
 
-## Docs file in this repo
+- `php artisan vormia-inertia:install`
+- `php artisan vormia-inertia:uninstall`
 
-- Add [`inertia/VORMIA_INERTIA.md`](inertia/VORMIA_INERTIA.md) (name can match your preference) containing:
-  - **Copy/merge** [`inertia/tsconfig.json`](inertia/tsconfig.json): `@/*` → `resources/js/*`, `include` globs.
-  - **Copy/merge** [`inertia/vite.config.js`](inertia/vite.config.js): `laravel-vite-plugin` inputs, `@tailwindcss/vite`, `@vitejs/plugin-react`, `@inertiajs/vite`, `wayfinder()` plugin, `@` alias.
-  - **Notification flow** diagram (mermaid): Controller → `NotificationService::flash()` / session → `HandleInertiaRequests` share → React `usePage().props.notification`.
-  - **MediaForge**: link to Laravel filesystem docs + Vormia `config/vormia.php` keys; show PHP example `MediaForge::url(...)` vs passing **already-resolved URL strings** in Inertia props (preferred for SPA).
-  - **jQuery / Flux** sections reflecting the prompts above.
+### Published and generated files
 
-## Files in _this_ repo to align (when you switch to Agent mode)
+The installer can create or patch:
 
-- Update published templates to match the package stubs: [`inertia/resources/js/app.tsx`](inertia/resources/js/app.tsx), [`inertia/resources/css/app.css`](inertia/resources/css/app.css) (only if installer/doc defines optional strips).
-- Add the new markdown at [`inertia/VORMIA_INERTIA.md`](inertia/VORMIA_INERTIA.md).
+- `config/vormia-inertia.php`
+- `app/Http/Middleware/HandleInertiaRequests.php`
+- `bootstrap/app.php`
+- `resources/views/app.blade.php`
+- `resources/js/app.*`
+- `resources/css/app.css`
 
-## Notes / constraints
+### Package helper access
 
-- **Do not** add `"version"` in the new package’s `composer.json` (per your rule); rely on git tags.
-- **No default seeding** in installers.
-- Keep **core** `vormiaphp/vormia` free of Inertia/npm deps; all Inertia-specific code lives in `vormiaphp/vormia-inertia`.
+```php
+use VormiaPHP\VormiaInertia\Facades\VormiaInertia;
 
-```mermaid
-flowchart LR
-  subgraph php [Laravel]
-    C[Controller_or_Vormia_helpers]
-    NS[NotificationService]
-    MI[HandleInertiaRequests_share]
-    C --> NS
-    NS --> MI
-  end
-  subgraph js [Inertia_React]
-    APP[app_tsx]
-    BR[VormiaNotificationBridge]
-    APP --> BR
-  end
-  MI -->|page_props_notification| BR
+VormiaInertia::name();
+app('vormia.inertia')->name();
 ```
+
+Right now the package helper surface is intentionally small. The main value of the package is the host-app bridge and command tooling.
+
+## What Still Belongs To Core Vormia
+
+Use `vormiaphp/vormia` for application behavior and business features:
+
+- `NotificationService::current()`
+- `MediaForge::url($path)->public()`
+- `MediaForge::url($path)->private()`
+- upload handling, roles, permissions, notifications, and MediaForge storage rules
+
+Example:
+
+```php
+use Inertia\Inertia;
+use Vormia\Vormia\Services\NotificationService;
+use VormiaPHP\Vormia\Facades\MediaForge;
+
+return Inertia::render('Profile/Show', [
+    'notification' => NotificationService::current(),
+    'avatar' => MediaForge::url($avatarPath)->public(),
+    'preview' => MediaForge::url($avatarPath)->private(),
+]);
+```
+
+The rule of thumb is simple: resolve media URLs and notification data in PHP, then pass clean props into Inertia responses.
+
+## Install Command
+
+Basic interactive usage:
+
+```sh
+php artisan vormia-inertia:install
+```
+
+Scripted usage:
+
+```sh
+php artisan vormia-inertia:install --stack=vue --lang=ts
+```
+
+Supported options:
+
+- `--stack=react|vue|svelte`
+- `--lang=js|ts`
+- `--replace=app.js`
+- `--replace=app.css`
+- `--replace=app.tsx`
+- `--replace=app.jsx`
+- `--replace=app.ts`
+- `--force`
+
+### Replace flag behavior
+
+`--replace=app.js` is the stable user-facing alias. It resolves to the selected stack’s real entry filename:
+
+- React + TS: `resources/js/app.tsx`
+- React + JS: `resources/js/app.jsx`
+- Vue + TS: `resources/js/app.ts`
+- Vue + JS: `resources/js/app.js`
+- Svelte + TS: `resources/js/app.ts`
+- Svelte + JS: `resources/js/app.js`
+
+`--replace=app.css` targets `resources/css/app.css`.
+
+If you do not pass a replace flag, the installer will not overwrite existing entry assets in non-interactive mode. In interactive mode it can ask first.
+
+### What install patches automatically
+
+- Adds `HandleInertiaRequests` shared props or creates the middleware if it does not exist
+- Appends `HandleInertiaRequests::class` to the web middleware stack in `bootstrap/app.php`
+- Creates an Inertia root view if one is missing
+- Creates minimal stack-aware `resources/js/app.*`
+- Creates minimal `resources/css/app.css` if missing
+
+### What install does not patch automatically
+
+- `vite.config.js` or `vite.config.ts`
+- page components under `resources/js/Pages`
+- Tailwind, UI libraries, or a design system
+
+You still need to wire the correct Vite plugin for React, Vue, or Svelte in the host app.
+
+## Uninstall Command
+
+```sh
+php artisan vormia-inertia:uninstall
+```
+
+Force mode:
+
+```sh
+php artisan vormia-inertia:uninstall --force
+```
+
+The uninstall flow is conservative:
+
+- marker-managed changes in `bootstrap/app.php` are removed
+- shared props inserted by the installer are removed
+- full generated files are only deleted when they still match the original stub
+- modified generated files are left in place
+
+That safety behavior matters when a team has started customizing the generated bridge files.
+
+## Stack Matrix
+
+| Stack | JS entry | TS entry | Main package | Typical component files |
+| --- | --- | --- | --- | --- |
+| React | `resources/js/app.jsx` | `resources/js/app.tsx` | `@inertiajs/react` | `.jsx`, `.tsx` |
+| Vue | `resources/js/app.js` | `resources/js/app.ts` | `@inertiajs/vue3` | `.vue` |
+| Svelte | `resources/js/app.js` | `resources/js/app.ts` | `@inertiajs/svelte` | `.svelte` |
+
+## Client-Side Helpers Developers Call
+
+After installation, the main adapter helpers to use in application code are:
+
+- `usePage`
+- `useForm`
+- `Link`
+- `router.visit`
+
+Those are the helpers to reach for in pages, forms, and client-side navigation.
+
+## Shared Props Contract
+
+The generated middleware shares:
+
+- `notification`
+- `auth.user`
+- `vormia.inertia.package`
+
+That gives you a predictable place to read notification and user data on every navigation.
+
+## Reference Example Versus Generated Stubs
+
+This repository includes a richer `inertia/` reference app. Treat it as a maintainers’ example, not as the exact file set produced by `php artisan vormia-inertia:install`.
+
+The generated stubs are deliberately smaller so they can fit into an existing Laravel application with less risk.
+
+## Recommended Workflow
+
+1. Install core Vormia.
+2. Require `vormiaphp/vormia-inertia`.
+3. Run `php artisan vormia-inertia:install`.
+4. Update `vite.config.js` or `vite.config.ts` for the chosen stack.
+5. Add your page components.
+6. Use `NotificationService::current()`, `MediaForge::url($path)->public()`, and `MediaForge::url($path)->private()` in PHP before passing props into Inertia.
+7. Use `usePage`, `useForm`, `Link`, and `router.visit` in the client app.
